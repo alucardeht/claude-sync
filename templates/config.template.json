@@ -1,0 +1,17 @@
+{
+  "version": "1.0.0",
+  "github": {
+    "repo": "",
+    "owner": "",
+    "authMethod": "ssh",
+    "token": null
+  },
+  "workspaces": [],
+  "syncRules": {
+    "globalFile": "CLAUDE-GLOBAL.md",
+    "projectFile": "CLAUDE-PROJECT.md",
+    "targetFile": "CLAUDE.md"
+  },
+  "autoSync": true,
+  "lastSync": null
+}
