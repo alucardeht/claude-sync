@@ -10,7 +10,7 @@
 
 ## 📖 Overview
 
-**Claude Sync** is a developer tool designed to solve a common problem: maintaining consistent `CLAUDE.md` configuration files across multiple projects. Instead of manually copying and pasting changes between projects, Claude Sync automates the entire process.
+**Claude Sync** is a developer tool designed to solve a common problem: maintaining consistent `CLAUDE.md` configuration files across multiple projects. Instead of manually copying and pasting changes between projects, Claude Sync automates the entire process while keeping project-specific rules separate.
 
 ### The Problem It Solves
 
@@ -18,15 +18,18 @@ If you work with Claude Code on multiple projects, you've probably experienced:
 - ❌ Manually copying `CLAUDE.md` changes across projects
 - ❌ Forgetting to update some projects
 - ❌ Inconsistent configurations between projects
+- ❌ Mixing global rules with project-specific rules
+- ❌ Python rules appearing in JavaScript projects (and vice versa)
 - ❌ No backup of your configuration files
 
 ### The Solution
 
 Claude Sync provides:
-- ✅ **Automatic synchronization** across all your projects
-- ✅ **GitHub backup** with version control
+- ✅ **Automatic synchronization** of global rules across all your projects
+- ✅ **Separation** of shared rules (GLOBAL) from project-specific rules (PROJECT)
+- ✅ **GitHub backup** storing only shared rules as standard `CLAUDE.md`
 - ✅ **File watching** for real-time updates
-- ✅ **Global + Project-specific** configuration merging
+- ✅ **Smart merging** generates final CLAUDE.md from GLOBAL + PROJECT
 - ✅ **Cross-platform** support (macOS, Linux, Windows)
 
 ---
@@ -162,8 +165,11 @@ claude-sync logs -f
 ### Manual Synchronization
 
 ```bash
-# Manual sync (all workspaces)
+# Manual sync (regenerate all CLAUDE.md and push GLOBAL to GitHub)
 claude-sync sync
+
+# Pull latest global rules from GitHub
+claude-sync pull
 
 # Watch for changes (foreground mode - blocks terminal)
 claude-sync watch
@@ -194,30 +200,123 @@ claude-sync --version
 
 ---
 
+## 🎯 When to Use GLOBAL vs PROJECT
+
+### CLAUDE-GLOBAL.md (Shared Rules)
+
+Use for rules that apply to **ALL your projects**:
+
+- ✅ General coding style and conventions
+- ✅ Git commit message patterns
+- ✅ Code review guidelines
+- ✅ Documentation standards
+- ✅ General security best practices
+- ✅ Team collaboration rules
+
+**Example:**
+```markdown
+# Global Rules
+
+## Commit Messages
+- Use conventional commits: feat, fix, docs, etc.
+- Keep subject line under 50 characters
+
+## Code Style
+- Use meaningful variable names
+- Add comments for complex logic
+```
+
+### CLAUDE-PROJECT.md (Project-Specific Rules)
+
+Use for rules that are **UNIQUE to each project**:
+
+- ✅ Programming language specifics (Python, JavaScript, Go, etc.)
+- ✅ Framework conventions (React, Django, Express, etc.)
+- ✅ Project architecture and folder structure
+- ✅ API endpoints and database schemas
+- ✅ Environment-specific configurations
+- ✅ Third-party libraries and their usage
+
+**Example:**
+```markdown
+# Project-Specific Rules
+
+## Technology Stack
+- Backend: Node.js + Express
+- Database: PostgreSQL
+- ORM: Prisma
+
+## Architecture
+- Follow MVC pattern
+- Controllers in /src/controllers
+- Models in /src/models
+```
+
+### ⚠️ Important Notes
+
+- **CLAUDE-PROJECT.md never leaves your machine** - it's local only
+- This prevents polluting shared rules with React-specific instructions when other projects use Python
+- Each project can have completely different CLAUDE-PROJECT.md files
+- The merged CLAUDE.md is also local and auto-generated
+
+---
+
 ## 📚 How It Works
+
+### File Structure
+
+**On GitHub:**
+```
+your-repo/
+└── CLAUDE.md  ← Contains your global rules (shared across all projects)
+```
+
+**Locally (each workspace):**
+```
+project-a/
+├── CLAUDE-GLOBAL.md    ← Synced with GitHub/CLAUDE.md
+├── CLAUDE-PROJECT.md   ← Project-specific rules (never pushed to GitHub)
+└── CLAUDE.md           ← Generated: GLOBAL + PROJECT
+```
 
 ### Sync Flow
 
+**When CLAUDE-GLOBAL.md changes:**
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │  1. File Watcher detects change in CLAUDE-GLOBAL.md         │
-│     or CLAUDE-PROJECT.md                                     │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  2. Syncer merges:                                           │
-│     CLAUDE-GLOBAL.md + CLAUDE-PROJECT.md → CLAUDE.md        │
+│  2. Regenerate local CLAUDE.md (GLOBAL + PROJECT)           │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  3. Git commits and pushes to GitHub repository             │
+│  3. Push CLAUDE-GLOBAL.md to GitHub (saved as CLAUDE.md)    │
 └──────────────────────────┬──────────────────────────────────┘
                            │
                            ▼
 ┌─────────────────────────────────────────────────────────────┐
-│  4. All other workspaces can pull latest changes            │
+│  4. Propagate to all other workspaces as CLAUDE-GLOBAL.md   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**When CLAUDE-PROJECT.md changes:**
+```
+┌─────────────────────────────────────────────────────────────┐
+│  1. File Watcher detects change in CLAUDE-PROJECT.md        │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  2. Regenerate local CLAUDE.md (GLOBAL + PROJECT)           │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│  3. Done! (Project rules stay local, never pushed)          │
 └─────────────────────────────────────────────────────────────┘
 ```
 
@@ -236,6 +335,12 @@ The final `CLAUDE.md` is generated by merging:
 <!-- Content from CLAUDE-PROJECT.md -->
 [Project-specific overrides and additions]
 ```
+
+### Key Concepts
+
+- ✅ **CLAUDE-GLOBAL.md**: Shared rules (coding style, commit patterns, etc.) → Synced to GitHub as `CLAUDE.md`
+- ✅ **CLAUDE-PROJECT.md**: Project-specific rules (language, framework, architecture) → Stays local, never pushed
+- ✅ **CLAUDE.md**: Auto-generated merged file used by Claude Code
 
 ---
 

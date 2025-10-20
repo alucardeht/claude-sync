@@ -41,6 +41,7 @@ program
 
       const fs = require('fs');
       const path = require('path');
+      const git = require('../lib/git');
       const resolvedPath = path.resolve(workspace);
       const claudeMdPath = path.join(resolvedPath, 'CLAUDE.md');
       const globalPath = path.join(resolvedPath, 'CLAUDE-GLOBAL.md');
@@ -50,14 +51,27 @@ program
 
       const added = config.addWorkspace(workspace);
 
+      spinner.text = 'Setting up workspace files...';
+
+      // Check if GitHub has CLAUDE.md
+      const repoPath = git.getRepoPath();
+      const githubClaudeFile = path.join(repoPath, 'CLAUDE.md');
+      const hasGithubClaude = fs.existsSync(githubClaudeFile);
+
+      // Download CLAUDE-GLOBAL.md from GitHub if available
+      if (hasGithubClaude && !fs.existsSync(globalPath)) {
+        fs.copyFileSync(githubClaudeFile, globalPath);
+        spinner.text = 'Downloaded CLAUDE-GLOBAL.md from GitHub';
+      }
+
       spinner.succeed(`Workspace added: ${added}`);
 
-      if (fs.existsSync(claudeMdPath) && !fs.existsSync(globalPath) && !fs.existsSync(projectPath)) {
+      if (fs.existsSync(claudeMdPath) && !fs.existsSync(projectPath)) {
         console.log(boxen(
-          chalk.yellow.bold('⚠ Migration Required\n\n') +
+          chalk.yellow.bold('⚠ Migration Recommended\n\n') +
           chalk.gray('Detected existing CLAUDE.md file.\n') +
-          chalk.gray('You need to split it into:\n\n') +
-          chalk.blue('  • CLAUDE-GLOBAL.md') + chalk.gray(' (shared rules)\n') +
+          chalk.gray('You should split it into:\n\n') +
+          chalk.blue('  • CLAUDE-GLOBAL.md') + chalk.gray(' (shared - already downloaded from GitHub)\n') +
           chalk.blue('  • CLAUDE-PROJECT.md') + chalk.gray(' (project-specific)\n\n') +
           chalk.white('Run: ') + chalk.cyan('claude-sync migrate ' + path.basename(resolvedPath)),
           {
@@ -69,11 +83,14 @@ program
         ));
       } else if (!fs.existsSync(globalPath) && !fs.existsSync(projectPath)) {
         console.log(chalk.gray('\nNext steps:'));
-        console.log(chalk.gray('  1. Create CLAUDE-GLOBAL.md (shared rules across all projects)'));
-        console.log(chalk.gray('  2. Create CLAUDE-PROJECT.md (project-specific rules)'));
-        console.log(chalk.gray('  3. Run "claude-sync sync" to generate CLAUDE.md\n'));
+        console.log(chalk.gray('  1. Create CLAUDE-GLOBAL.md (shared rules - will be synced to GitHub as CLAUDE.md)'));
+        console.log(chalk.gray('  2. Create CLAUDE-PROJECT.md (project-specific rules - stays local)'));
+        console.log(chalk.gray('  3. Run "claude-sync sync" to generate merged CLAUDE.md\n'));
       } else {
-        console.log(chalk.gray('\nTip: Run "claude-sync sync" to sync all workspaces\n'));
+        console.log(chalk.blue('\n✓ Workspace ready'));
+        console.log(chalk.gray('  • CLAUDE-GLOBAL.md: Shared rules (syncs to GitHub)'));
+        console.log(chalk.gray('  • CLAUDE-PROJECT.md: Project-specific rules (local only)'));
+        console.log(chalk.gray('\nRun "claude-sync sync" to generate merged CLAUDE.md\n'));
       }
     } catch (error) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
@@ -180,6 +197,50 @@ program
       console.log();
     } catch (error) {
       console.error(chalk.red(`\n✗ Sync failed: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('pull')
+  .description('Pull CLAUDE-GLOBAL.md from GitHub and update all workspaces')
+  .action(async () => {
+    try {
+      if (!config.exists()) {
+        console.error(chalk.red('\n✗ Configuration not found. Run "claude-sync init" first.\n'));
+        process.exit(1);
+      }
+
+      const spinner = ora('Pulling from GitHub...').start();
+
+      const results = await syncer.propagateFromGitHub();
+
+      spinner.stop();
+
+      console.log(
+        boxen(chalk.bold.blue('Pull Results'), {
+          padding: 1,
+          margin: 1,
+          borderStyle: 'round',
+          borderColor: 'blue',
+        })
+      );
+
+      results.forEach((result) => {
+        if (result.success) {
+          console.log(chalk.green(`✓ ${result.workspace}`));
+          if (result.message) {
+            console.log(chalk.gray(`  ${result.message}`));
+          }
+        } else {
+          console.log(chalk.red(`✗ ${result.workspace}`));
+          console.log(chalk.gray(`  ${result.error}`));
+        }
+      });
+
+      console.log();
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Pull failed: ${error.message}\n`));
       process.exit(1);
     }
   });
