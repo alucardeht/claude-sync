@@ -2,9 +2,9 @@
 
 > Cross-platform CLI tool for automatic synchronization of CLAUDE.md files across multiple projects with GitHub backup
 
-[![npm version](https://img.shields.io/npm/v/claude-sync.svg)](https://www.npmjs.com/package/claude-sync)
+[![npm version](https://img.shields.io/npm/v/@alucardeht/claude-sync.svg)](https://www.npmjs.com/package/@alucardeht/claude-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js Version](https://img.shields.io/node/v/claude-sync.svg)](https://nodejs.org)
+[![Node.js Version](https://img.shields.io/node/v/@alucardeht/claude-sync.svg)](https://nodejs.org)
 
 ---
 
@@ -47,7 +47,7 @@ Claude Sync provides:
 
 ```bash
 # 1. Install globally
-npm install -g claude-sync
+npm install -g @alucardeht/claude-sync
 
 # 2. Run interactive setup (will offer to start daemon automatically)
 claude-sync init
@@ -72,7 +72,7 @@ claude-sync logs -f
 ### Global Installation
 
 ```bash
-npm install -g claude-sync
+npm install -g @alucardeht/claude-sync
 ```
 
 ### Verify Installation
