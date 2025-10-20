@@ -39,13 +39,42 @@ program
         process.exit(1);
       }
 
+      const fs = require('fs');
+      const path = require('path');
+      const resolvedPath = path.resolve(workspace);
+      const claudeMdPath = path.join(resolvedPath, 'CLAUDE.md');
+      const globalPath = path.join(resolvedPath, 'CLAUDE-GLOBAL.md');
+      const projectPath = path.join(resolvedPath, 'CLAUDE-PROJECT.md');
+
       const spinner = ora('Adding workspace...').start();
 
       const added = config.addWorkspace(workspace);
 
       spinner.succeed(`Workspace added: ${added}`);
 
-      console.log(chalk.gray('\nTip: Run "claude-sync sync" to sync all workspaces\n'));
+      if (fs.existsSync(claudeMdPath) && !fs.existsSync(globalPath) && !fs.existsSync(projectPath)) {
+        console.log(boxen(
+          chalk.yellow.bold('⚠ Migration Required\n\n') +
+          chalk.gray('Detected existing CLAUDE.md file.\n') +
+          chalk.gray('You need to split it into:\n\n') +
+          chalk.blue('  • CLAUDE-GLOBAL.md') + chalk.gray(' (shared rules)\n') +
+          chalk.blue('  • CLAUDE-PROJECT.md') + chalk.gray(' (project-specific)\n\n') +
+          chalk.white('Run: ') + chalk.cyan('claude-sync migrate ' + path.basename(resolvedPath)),
+          {
+            padding: 1,
+            margin: 1,
+            borderStyle: 'round',
+            borderColor: 'yellow'
+          }
+        ));
+      } else if (!fs.existsSync(globalPath) && !fs.existsSync(projectPath)) {
+        console.log(chalk.gray('\nNext steps:'));
+        console.log(chalk.gray('  1. Create CLAUDE-GLOBAL.md (shared rules across all projects)'));
+        console.log(chalk.gray('  2. Create CLAUDE-PROJECT.md (project-specific rules)'));
+        console.log(chalk.gray('  3. Run "claude-sync sync" to generate CLAUDE.md\n'));
+      } else {
+        console.log(chalk.gray('\nTip: Run "claude-sync sync" to sync all workspaces\n'));
+      }
     } catch (error) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
@@ -157,7 +186,7 @@ program
 
 program
   .command('watch')
-  .description('Watch for file changes and auto-sync')
+  .description('Watch for file changes and auto-sync (foreground)')
   .action(async () => {
     try {
       if (!config.exists()) {
@@ -170,6 +199,173 @@ program
       console.error(chalk.red(`\n✗ Watcher failed: ${error.message}\n`));
       process.exit(1);
     }
+  });
+
+program
+  .command('start')
+  .description('Start file watcher in background (daemon)')
+  .action(async () => {
+    try {
+      if (!config.exists()) {
+        console.error(chalk.red('\n✗ Configuration not found. Run "claude-sync init" first.\n'));
+        process.exit(1);
+      }
+
+      const pm2 = require('pm2');
+      const path = require('path');
+
+      pm2.connect((err) => {
+        if (err) {
+          console.error(chalk.red(`\n✗ Failed to connect to PM2: ${err.message}\n`));
+          process.exit(1);
+        }
+
+        pm2.start(
+          {
+            script: path.join(__dirname, '..', 'lib', 'daemon.js'),
+            name: 'claude-sync',
+            autorestart: true,
+            max_restarts: 10,
+            min_uptime: '10s',
+          },
+          (err) => {
+            pm2.disconnect();
+
+            if (err) {
+              if (err.message && err.message.includes('already exists')) {
+                console.log(chalk.yellow('\n⚠ Claude Sync is already running\n'));
+                console.log(chalk.gray('Use "claude-sync stop" to stop it first\n'));
+              } else {
+                console.error(chalk.red(`\n✗ Failed to start: ${err.message}\n`));
+              }
+              process.exit(1);
+            }
+
+            console.log(chalk.green('\n✓ Claude Sync started in background\n'));
+            console.log(chalk.gray('Commands:'));
+            console.log(chalk.gray('  claude-sync stop     Stop the daemon'));
+            console.log(chalk.gray('  claude-sync restart  Restart the daemon'));
+            console.log(chalk.gray('  claude-sync logs     View logs\n'));
+          }
+        );
+      });
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Start failed: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('stop')
+  .description('Stop the background daemon')
+  .action(() => {
+    const pm2 = require('pm2');
+
+    pm2.connect((err) => {
+      if (err) {
+        console.error(chalk.red(`\n✗ Failed to connect to PM2: ${err.message}\n`));
+        process.exit(1);
+      }
+
+      pm2.stop('claude-sync', (err) => {
+        if (err) {
+          pm2.disconnect();
+          console.error(chalk.red(`\n✗ Failed to stop: ${err.message}\n`));
+          process.exit(1);
+        }
+
+        pm2.delete('claude-sync', (err) => {
+          pm2.disconnect();
+
+          if (err) {
+            console.error(chalk.red(`\n✗ Failed to remove: ${err.message}\n`));
+            process.exit(1);
+          }
+
+          console.log(chalk.green('\n✓ Claude Sync stopped\n'));
+        });
+      });
+    });
+  });
+
+program
+  .command('restart')
+  .description('Restart the background daemon')
+  .action(() => {
+    const pm2 = require('pm2');
+
+    pm2.connect((err) => {
+      if (err) {
+        console.error(chalk.red(`\n✗ Failed to connect to PM2: ${err.message}\n`));
+        process.exit(1);
+      }
+
+      pm2.restart('claude-sync', (err) => {
+        pm2.disconnect();
+
+        if (err) {
+          console.error(chalk.red(`\n✗ Failed to restart: ${err.message}\n`));
+          console.log(chalk.gray('Try "claude-sync start" if the daemon is not running\n'));
+          process.exit(1);
+        }
+
+        console.log(chalk.green('\n✓ Claude Sync restarted\n'));
+      });
+    });
+  });
+
+program
+  .command('logs')
+  .description('View daemon logs')
+  .option('-f, --follow', 'Follow log output')
+  .option('-n, --lines <number>', 'Number of lines to show', '50')
+  .action((options) => {
+    const pm2 = require('pm2');
+
+    pm2.connect((err) => {
+      if (err) {
+        console.error(chalk.red(`\n✗ Failed to connect to PM2: ${err.message}\n`));
+        process.exit(1);
+      }
+
+      if (options.follow) {
+        pm2.launchBus((err, bus) => {
+          if (err) {
+            console.error(chalk.red(`\n✗ Failed to launch bus: ${err.message}\n`));
+            process.exit(1);
+          }
+
+          console.log(chalk.blue('📋 Streaming logs (Ctrl+C to stop)...\n'));
+
+          bus.on('log:out', (packet) => {
+            if (packet.process.name === 'claude-sync') {
+              console.log(chalk.gray(`[${new Date().toLocaleTimeString()}]`), packet.data);
+            }
+          });
+
+          bus.on('log:err', (packet) => {
+            if (packet.process.name === 'claude-sync') {
+              console.log(chalk.red(`[${new Date().toLocaleTimeString()}]`), packet.data);
+            }
+          });
+        });
+      } else {
+        const { execSync } = require('child_process');
+        const path = require('path');
+        const pm2Path = path.join(__dirname, '..', 'node_modules', '.bin', 'pm2');
+
+        try {
+          const output = execSync(`${pm2Path} logs claude-sync --nostream --lines ${options.lines}`, {
+            encoding: 'utf8',
+          });
+          console.log(output);
+        } catch (err) {
+          console.error(chalk.red('\n✗ Failed to get logs\n'));
+          console.log(chalk.gray('Make sure claude-sync is running with "claude-sync start"\n'));
+        }
+        pm2.disconnect();
+      }
+    });
   });
 
 program
@@ -207,6 +403,121 @@ program
       console.log();
     } catch (error) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
+  .command('migrate <workspace>')
+  .description('Help migrate existing CLAUDE.md to GLOBAL/PROJECT structure')
+  .action(async (workspace) => {
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const inquirer = require('inquirer');
+
+      const resolvedPath = path.resolve(workspace);
+      const claudeMdPath = path.join(resolvedPath, 'CLAUDE.md');
+      const globalPath = path.join(resolvedPath, 'CLAUDE-GLOBAL.md');
+      const projectPath = path.join(resolvedPath, 'CLAUDE-PROJECT.md');
+
+      if (!fs.existsSync(claudeMdPath)) {
+        console.error(chalk.red('\n✗ No CLAUDE.md found in this workspace\n'));
+        process.exit(1);
+      }
+
+      if (fs.existsSync(globalPath) || fs.existsSync(projectPath)) {
+        console.error(chalk.red('\n✗ CLAUDE-GLOBAL.md or CLAUDE-PROJECT.md already exists\n'));
+        console.log(chalk.gray('Migration already completed or in progress\n'));
+        process.exit(1);
+      }
+
+      console.log(boxen(
+        chalk.blue.bold('📋 Migration Helper\n\n') +
+        chalk.gray('This will help you migrate your existing CLAUDE.md\n') +
+        chalk.gray('into the new structure:\n\n') +
+        chalk.white('  • CLAUDE-GLOBAL.md ') + chalk.gray('→ Shared rules (all projects)\n') +
+        chalk.white('  • CLAUDE-PROJECT.md ') + chalk.gray('→ Project-specific rules\n'),
+        {
+          padding: 1,
+          margin: 1,
+          borderStyle: 'round',
+          borderColor: 'blue'
+        }
+      ));
+
+      const { proceed } = await inquirer.prompt([
+        {
+          type: 'confirm',
+          name: 'proceed',
+          message: 'Start migration?',
+          default: true,
+        },
+      ]);
+
+      if (!proceed) {
+        console.log(chalk.yellow('\n⚠ Migration cancelled\n'));
+        return;
+      }
+
+      const spinner = ora('Creating files...').start();
+
+      const globalTemplate = `# Global Rules - Shared Across All Projects
+
+## Instructions
+Edit this file to add rules that apply to ALL your projects.
+Examples: commit patterns, code style, naming conventions, etc.
+
+---
+
+# TODO: Move global rules from CLAUDE-PROJECT.md to here
+
+`;
+
+      fs.writeFileSync(globalPath, globalTemplate, 'utf8');
+
+      const existingContent = fs.readFileSync(claudeMdPath, 'utf8');
+      fs.writeFileSync(projectPath, existingContent, 'utf8');
+
+      fs.renameSync(claudeMdPath, path.join(resolvedPath, 'CLAUDE.md.backup'));
+
+      spinner.succeed('Migration files created');
+
+      const { isDaemonRunning } = require('../lib/daemon-status');
+      const daemonRunning = isDaemonRunning();
+
+      let nextSteps = '';
+      if (daemonRunning) {
+        nextSteps = chalk.green.bold('✓ Daemon is running\n') +
+                   chalk.gray('Changes will be automatically synced when you save files\n\n');
+      } else {
+        nextSteps = chalk.yellow.bold('⚠ Daemon not running\n') +
+                   chalk.gray('Start it with: ') + chalk.cyan('claude-sync start') + chalk.gray('\n') +
+                   chalk.gray('Or manually sync: ') + chalk.cyan('claude-sync sync') + chalk.gray('\n\n');
+      }
+
+      console.log(boxen(
+        chalk.green.bold('✓ Migration Complete!\n\n') +
+        chalk.gray('Files created:\n') +
+        chalk.blue('  ✓ CLAUDE-GLOBAL.md ') + chalk.gray('(template)\n') +
+        chalk.blue('  ✓ CLAUDE-PROJECT.md ') + chalk.gray('(copy of original)\n') +
+        chalk.blue('  ✓ CLAUDE.md.backup ') + chalk.gray('(original backup)\n\n') +
+        chalk.yellow.bold('📝 Manual Curation Required:\n\n') +
+        chalk.white('1. ') + chalk.gray('Open CLAUDE-PROJECT.md\n') +
+        chalk.white('2. ') + chalk.gray('Identify rules that apply to ALL projects\n') +
+        chalk.white('3. ') + chalk.gray('Move those rules to CLAUDE-GLOBAL.md\n') +
+        chalk.white('4. ') + chalk.gray('Keep project-specific rules in CLAUDE-PROJECT.md\n\n') +
+        nextSteps,
+        {
+          padding: 1,
+          margin: 1,
+          borderStyle: 'round',
+          borderColor: 'green'
+        }
+      ));
+
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Migration failed: ${error.message}\n`));
       process.exit(1);
     }
   });

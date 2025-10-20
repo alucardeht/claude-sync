@@ -46,17 +46,17 @@ Claude Sync provides:
 ## 🚀 Quick Start
 
 ```bash
-# Install globally
+# 1. Install globally
 npm install -g claude-sync
 
-# Run interactive setup
+# 2. Run interactive setup (will offer to start daemon automatically)
 claude-sync init
 
-# Add your first workspace
-claude-sync add ~/my-project
+# 3. That's it! Changes are now synced automatically 🎉
+#    Edit CLAUDE-GLOBAL.md or CLAUDE-PROJECT.md and watch them sync!
 
-# Start watching for changes
-claude-sync watch
+# Optional: View logs
+claude-sync logs -f
 ```
 
 ---
@@ -140,34 +140,56 @@ claude-sync list
 claude-sync remove ~/projects/backend
 ```
 
-### Synchronization
+### Background Daemon (Recommended)
+
+```bash
+# Start daemon in background (auto-sync)
+claude-sync start
+
+# Stop daemon
+claude-sync stop
+
+# Restart daemon
+claude-sync restart
+
+# View daemon logs
+claude-sync logs
+
+# Follow logs in real-time
+claude-sync logs -f
+```
+
+### Manual Synchronization
 
 ```bash
 # Manual sync (all workspaces)
 claude-sync sync
 
-# Watch for changes (real-time sync)
+# Watch for changes (foreground mode - blocks terminal)
 claude-sync watch
 ```
 
-### Status & Information
+### Migration & Management
 
 ```bash
+# Migrate existing CLAUDE.md to new structure
+claude-sync migrate <workspace>
+
 # Show configuration and sync status
 claude-sync status
 
+# Reset everything (destructive operation)
+claude-sync reset
+```
+
+### Help & Information
+
+```bash
 # Display help
 claude-sync --help
 
 # Show version
 claude-sync --version
-```
-
-### Reset Configuration
-
-```bash
-# Reset everything (destructive operation)
-claude-sync reset
 ```
 
 ---
@@ -321,53 +343,75 @@ npm test
 
 ## 📝 Examples
 
-### Example 1: Single Developer with Multiple Projects
+### Example 1: First Time Setup
 
 ```bash
-# Initial setup
+# 1. Run setup wizard
 claude-sync init
+# → Choose SSH authentication
+# → Configure GitHub repo
+# → Add workspaces during setup
+# → Choose "Yes" to start daemon automatically ✅
 
-# Add all your projects
-claude-sync add ~/work/api-backend
-claude-sync add ~/work/web-frontend
-claude-sync add ~/work/mobile-app
-
-# Start watching
-claude-sync watch
-
-# Now edit CLAUDE-GLOBAL.md in any project
-# Changes automatically sync to all projects and GitHub
+# 2. That's it! Daemon is running in background
+# Edit CLAUDE-GLOBAL.md → Automatically synced to all projects + GitHub 🎉
 ```
 
-### Example 2: Team Collaboration
+### Example 2: Migrating Existing Project
 
 ```bash
-# Developer A: Sets up and pushes to GitHub
-claude-sync init
-claude-sync add ~/projects/team-repo
-# Edit CLAUDE-GLOBAL.md
-claude-sync sync
+# You already have CLAUDE.md in your project
+cd ~/my-existing-project
 
-# Developer B: Uses the same GitHub repo
-claude-sync init  # Point to same repository
-claude-sync add ~/projects/team-repo
-claude-sync sync  # Pull latest changes
+# Add workspace (will show migration warning)
+claude-sync add ~/my-existing-project
+
+# Migrate to new structure
+claude-sync migrate ~/my-existing-project
+
+# Manually curate:
+# 1. Open CLAUDE-PROJECT.md
+# 2. Move global rules to CLAUDE-GLOBAL.md
+# 3. Save files
+
+# If daemon is running → Syncs automatically
+# If not → claude-sync start
 ```
 
-### Example 3: Project-Specific Overrides
+### Example 3: Team Collaboration
 
 ```bash
-# Add workspace
-claude-sync add ~/projects/special-project
+# Developer A: Initial setup
+claude-sync init
+# Daemon starts automatically
+# Edit CLAUDE-GLOBAL.md → Auto-synced to GitHub
 
-# In ~/projects/special-project/:
-# - Create CLAUDE-GLOBAL.md (shared rules)
-# - Create CLAUDE-PROJECT.md (project-specific rules)
+# Developer B: Join same repository
+claude-sync init
+# Point to same GitHub repo (e.g., team/claude-rules)
+# Add same workspaces
+# Pull latest rules automatically
 
-# Run sync
-claude-sync sync
+# Both devs now share same CLAUDE-GLOBAL.md! 🤝
+```
 
-# Result: CLAUDE.md contains both files merged
+### Example 4: Daily Workflow
+
+```bash
+# Daemon runs in background (started during init)
+# Just edit files normally:
+
+# Edit global rules (all projects)
+vim ~/project-a/CLAUDE-GLOBAL.md
+# → Auto-synced to project-b, project-c, and GitHub
+
+# Edit project-specific rules
+vim ~/project-a/CLAUDE-PROJECT.md
+# → Only affects project-a, also synced to GitHub
+
+# Check if everything is working
+claude-sync logs -f
+claude-sync status
 ```
 
 ---
