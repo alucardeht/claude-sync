@@ -1,0 +1,37 @@
+# Development files
+.git/
+.github/
+.vscode/
+.idea/
+
+# Claude Code configuration
+.claude/
+.serena/
+CLAUDE.md
+claude-project/
+
+# Test files
+test/
+tests/
+*.test.js
+test-*.js
+
+# Documentation
+docs/
+
+# Environment
+.env
+.env.*
+
+# Build artifacts
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+temp/
+tmp/
+test-workspace/
