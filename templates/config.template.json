@@ -10,7 +10,9 @@
   "syncRules": {
     "globalFile": "CLAUDE-GLOBAL.md",
     "projectFile": "CLAUDE-PROJECT.md",
-    "targetFile": "CLAUDE.md"
+    "targetFile": "CLAUDE.md",
+    "globalSkillsDir": ".claude/skills",
+    "projectSkillsDir": ".claude/skills"
   },
   "autoSync": true,
   "lastSync": null
