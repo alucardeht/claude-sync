@@ -60,6 +60,16 @@ pids/
 .config/claude-sync/config.json
 .config/claude-sync/repo/
 
+# Claude Code configuration (project-specific)
+.claude/
+!.claude/commands/
+!.claude/skills/
+CLAUDE.md
+claude-project/
+
+# Serena MCP configuration
+.serena/
+
 # Temporary test files
 test-workspace/
 temp/
