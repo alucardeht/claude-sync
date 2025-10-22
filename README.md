@@ -58,7 +58,9 @@ npm install -g @alucardeht/claude-sync
 claude-sync init
 
 # 3. That's it! Changes are now synced automatically 🎉
-#    Edit CLAUDE-GLOBAL.md or CLAUDE-PROJECT.md and watch them sync!
+#    - Daemon automatically pulls latest rules and skills from GitHub on start
+#    - Edit CLAUDE-GLOBAL.md or skills and watch them sync!
+#    - Works on macOS, Linux, and Windows
 
 # Optional: View logs
 claude-sync logs -f
@@ -150,12 +152,15 @@ claude-sync remove ~/projects/backend
 ```bash
 # Start daemon in background (auto-sync)
 claude-sync start
+# → Automatically pulls latest CLAUDE-GLOBAL.md and skills from GitHub
+# → Watches for changes in real-time
 
 # Stop daemon
 claude-sync stop
 
 # Restart daemon
 claude-sync restart
+# → Also pulls latest changes on restart
 
 # View daemon logs
 claude-sync logs
@@ -163,6 +168,8 @@ claude-sync logs
 # Follow logs in real-time
 claude-sync logs -f
 ```
+
+> **Important:** When the daemon starts or restarts, it automatically pulls the latest changes from GitHub. This ensures you always have the most up-to-date rules and skills!
 
 ### Manual Synchronization
 
@@ -269,15 +276,18 @@ Claude Sync also automatically synchronizes **Claude Code Skills** across all yo
 
 ### Global Skills (Shared Across All Projects)
 
-**Location:**
-- **macOS/Linux**: `~/.claude/skills/`
-- **Windows**: `%USERPROFILE%\.claude\skills\`
+**Location (automatically detected by platform):**
+- **macOS**: `/Users/username/.claude/skills/`
+- **Linux**: `/home/username/.claude/skills/`
+- **Windows**: `C:\Users\username\.claude\skills\`
 
 **Behavior:**
 - ✅ Automatically synced to GitHub when modified
 - ✅ Pulled automatically when daemon starts
 - ✅ Available across all your projects and machines
 - ✅ Backed up in `your-repo/skills/` directory
+
+> **Note:** The daemon uses `os.homedir()` to automatically find the correct path for your operating system. You don't need to configure anything!
 
 **Example Structure:**
 ```
