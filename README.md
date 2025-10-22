@@ -1,6 +1,6 @@
 # 🔄 Claude Sync
 
-> Cross-platform CLI tool for automatic synchronization of CLAUDE.md files across multiple projects with GitHub backup
+> Cross-platform CLI tool for automatic synchronization of CLAUDE.md files and Skills across multiple projects with GitHub backup
 
 [![npm version](https://img.shields.io/npm/v/@alucardeht/claude-sync.svg)](https://www.npmjs.com/package/@alucardeht/claude-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -25,9 +25,10 @@ If you work with Claude Code on multiple projects, you've probably experienced:
 ### The Solution
 
 Claude Sync provides:
-- ✅ **Automatic synchronization** of global rules across all your projects
+- ✅ **Automatic synchronization** of global rules and skills across all your projects
 - ✅ **Separation** of shared rules (GLOBAL) from project-specific rules (PROJECT)
-- ✅ **GitHub backup** storing only shared rules as standard `CLAUDE.md`
+- ✅ **Skills sync** automatically backs up global skills to GitHub
+- ✅ **GitHub backup** storing only shared rules and skills
 - ✅ **File watching** for real-time updates
 - ✅ **Smart merging** generates final CLAUDE.md from GLOBAL + PROJECT
 - ✅ **Cross-platform** support (macOS, Linux, Windows)
@@ -38,9 +39,10 @@ Claude Sync provides:
 
 - 🚀 **Interactive Setup Wizard** - Easy configuration with step-by-step guidance
 - 🔐 **Flexible Authentication** - Support for SSH keys or HTTPS with Personal Access Token
-- 👀 **File Watcher** - Automatic sync when files change
+- 👀 **File Watcher** - Automatic sync when files or skills change
 - 🔄 **Smart Merging** - Combines global and project-specific configurations
-- 📦 **GitHub Backup** - Automatic push to your private repository
+- 🎯 **Skills Sync** - Automatically syncs Claude Code skills across machines
+- 📦 **GitHub Backup** - Automatic push of global rules and skills to your repository
 - 🎨 **Beautiful CLI** - Colored output with progress indicators
 - 🌍 **Cross-platform** - Works on macOS, Linux, and Windows
 
@@ -168,7 +170,7 @@ claude-sync logs -f
 # Manual sync (regenerate all CLAUDE.md and push GLOBAL to GitHub)
 claude-sync sync
 
-# Pull latest global rules from GitHub
+# Pull latest global rules and skills from GitHub
 claude-sync pull
 
 # Watch for changes (foreground mode - blocks terminal)
@@ -261,6 +263,73 @@ Use for rules that are **UNIQUE to each project**:
 
 ---
 
+## 🎯 Skills Synchronization
+
+Claude Sync also automatically synchronizes **Claude Code Skills** across all your machines!
+
+### Global Skills (Shared Across All Projects)
+
+**Location:**
+- **macOS/Linux**: `~/.claude/skills/`
+- **Windows**: `%USERPROFILE%\.claude\skills\`
+
+**Behavior:**
+- ✅ Automatically synced to GitHub when modified
+- ✅ Pulled automatically when daemon starts
+- ✅ Available across all your projects and machines
+- ✅ Backed up in `your-repo/skills/` directory
+
+**Example Structure:**
+```
+~/.claude/skills/
+├── agent-orchestration/
+│   └── SKILL.md
+├── ux-feedback-patterns/
+│   └── SKILL.md
+└── browser-testing/
+    └── SKILL.md
+```
+
+### Project-Specific Skills (Local Only)
+
+**Location:** `<workspace>/.claude/skills/`
+
+**Behavior:**
+- ✅ Detected by the watcher
+- ❌ **NOT synced to GitHub** (stays local)
+- ✅ Useful for project-specific workflows
+
+**Example:**
+```
+my-project/
+└── .claude/
+    └── skills/
+        └── project-workflow/
+            └── SKILL.md
+```
+
+### How It Works
+
+1. **On Daemon Start**: Automatically pulls latest skills from GitHub
+2. **When You Edit a Global Skill**:
+   - Daemon detects change in `~/.claude/skills/*/SKILL.md`
+   - Pushes to GitHub under `skills/` directory
+   - Other machines pull automatically on next daemon start
+3. **When You Edit a Project Skill**:
+   - Daemon detects change but doesn't sync to GitHub
+   - Skill stays local to that project only
+
+### Manual Pull
+
+```bash
+# Pull latest skills and rules from GitHub
+claude-sync pull
+```
+
+This command updates both CLAUDE-GLOBAL.md and all global skills.
+
+---
+
 ## 📚 How It Works
 
 ### File Structure
@@ -268,7 +337,12 @@ Use for rules that are **UNIQUE to each project**:
 **On GitHub:**
 ```
 your-repo/
-└── CLAUDE.md  ← Contains your global rules (shared across all projects)
+├── CLAUDE.md  ← Contains your global rules (shared across all projects)
+└── skills/    ← Contains your global skills
+    ├── agent-orchestration/
+    │   └── SKILL.md
+    └── ux-feedback-patterns/
+        └── SKILL.md
 ```
 
 **Locally (each workspace):**
@@ -276,7 +350,18 @@ your-repo/
 project-a/
 ├── CLAUDE-GLOBAL.md    ← Synced with GitHub/CLAUDE.md
 ├── CLAUDE-PROJECT.md   ← Project-specific rules (never pushed to GitHub)
-└── CLAUDE.md           ← Generated: GLOBAL + PROJECT
+├── CLAUDE.md           ← Generated: GLOBAL + PROJECT
+└── .claude/
+    └── skills/         ← Project-specific skills (optional, local only)
+        └── custom-workflow/
+            └── SKILL.md
+
+~/.claude/              ← Global Claude Code directory
+└── skills/             ← Global skills (synced to GitHub)
+    ├── agent-orchestration/
+    │   └── SKILL.md
+    └── browser-testing/
+        └── SKILL.md
 ```
 
 ### Sync Flow

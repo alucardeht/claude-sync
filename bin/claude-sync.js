@@ -212,7 +212,7 @@ program
 
 program
   .command('pull')
-  .description('Pull CLAUDE-GLOBAL.md from GitHub and update all workspaces')
+  .description('Pull CLAUDE-GLOBAL.md and skills from GitHub and update all workspaces')
   .action(async () => {
     try {
       if (!config.exists()) {
@@ -223,6 +223,7 @@ program
       const spinner = ora('Pulling from GitHub...').start();
 
       const results = await syncer.propagateFromGitHub();
+      const skillsResult = await syncer.propagateSkillsFromGitHub();
 
       spinner.stop();
 
@@ -246,6 +247,11 @@ program
           console.log(chalk.gray(`  ${result.error}`));
         }
       });
+
+      if (skillsResult.success) {
+        console.log(chalk.green(`✓ Skills`));
+        console.log(chalk.gray(`  ${skillsResult.message}`));
+      }
 
       console.log();
     } catch (error) {
