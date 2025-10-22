@@ -43,6 +43,7 @@ Claude Sync provides:
 - 🔄 **Smart Merging** - Combines global and project-specific configurations
 - 🎯 **Skills Sync** - Automatically syncs Claude Code skills across machines
 - 📦 **GitHub Backup** - Automatic push of global rules and skills to your repository
+- 🔔 **Update Notifications** - Automatic check for new versions with smart rate limiting
 - 🎨 **Beautiful CLI** - Colored output with progress indicators
 - 🌍 **Cross-platform** - Works on macOS, Linux, and Windows
 
@@ -478,6 +479,61 @@ cat ~/.ssh/id_ed25519.pub
 2. Generate new token (classic)
 3. Select scopes: ✅ `repo` (Full control of private repositories)
 4. Copy token and use during `claude-sync init`
+
+---
+
+## 🔔 Automatic Update Notifications
+
+Claude Sync automatically checks for new versions and notifies you when an update is available.
+
+### How It Works
+
+- ✅ **Smart Rate Limiting**: Checks for updates every 6 hours maximum
+- ✅ **Non-Blocking**: Never slows down your commands (2-second timeout)
+- ✅ **NPM Registry**: Fetches latest version from official NPM
+- ✅ **Beautiful Notifications**: Clear, easy-to-read update banner
+- ✅ **Privacy-Friendly**: No tracking, just version comparison
+
+### When Updates Are Checked
+
+Updates are checked automatically:
+- When you run any `claude-sync` command (add, list, sync, etc.)
+- Only if 6+ hours have passed since last check
+- Only if you haven't already been notified about that version
+
+### Update Notification Example
+
+```
+╭───────────────────────────────────────────╮
+│                                           │
+│         🎉 New version available!         │
+│                                           │
+│          Current version:  1.0.4          │
+│          Latest version:   1.0.5          │
+│                                           │
+│              Run to update:               │
+│   npm update -g @alucardeht/claude-sync   │
+│                                           │
+╰───────────────────────────────────────────╯
+```
+
+### Manual Update
+
+You can always update manually anytime:
+
+```bash
+npm update -g @alucardeht/claude-sync
+```
+
+### Disable Update Checks (Optional)
+
+If you want to disable update checks, you can delete the cache file:
+
+```bash
+rm ~/.config/claude-sync/last-update-check.json
+```
+
+Note: The check will run again next time, but you can keep deleting it if needed.
 
 ---
 

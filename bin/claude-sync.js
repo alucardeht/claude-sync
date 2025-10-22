@@ -8,9 +8,25 @@ const setup = require('../lib/setup');
 const config = require('../lib/config');
 const syncer = require('../lib/syncer');
 const watcher = require('../lib/watcher');
+const updater = require('../lib/updater');
 const packageJson = require('../package.json');
 
 const program = new Command();
+
+async function checkAndNotifyUpdate() {
+  if (!updater.shouldCheckForUpdates(packageJson.version)) {
+    return;
+  }
+
+  try {
+    const updateInfo = await updater.checkForUpdates(packageJson.version);
+    if (updateInfo.updateAvailable) {
+      updater.displayUpdateNotification(updateInfo);
+    }
+  } catch (error) {
+    // Silently ignore errors
+  }
+}
 
 program
   .name('claude-sync')
@@ -635,8 +651,10 @@ program
     }
   });
 
-program.parse(process.argv);
+checkAndNotifyUpdate().then(() => {
+  program.parse(process.argv);
 
-if (!process.argv.slice(2).length) {
-  program.outputHelp();
-}
+  if (!process.argv.slice(2).length) {
+    program.outputHelp();
+  }
+});

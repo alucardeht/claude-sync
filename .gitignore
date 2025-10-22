@@ -64,3 +64,4 @@ pids/
 test-workspace/
 temp/
 tmp/
+test-updater.js
