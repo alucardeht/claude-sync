@@ -65,6 +65,8 @@ pids/
 !.claude/commands/
 !.claude/skills/
 CLAUDE.md
+CLAUDE-GLOBAL.md
+CLAUDE-PROJECT.md
 claude-project/
 
 # Serena MCP configuration
