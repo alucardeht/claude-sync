@@ -43,9 +43,10 @@ program
       const path = require('path');
       const git = require('../lib/git');
       const resolvedPath = path.resolve(workspace);
-      const claudeMdPath = path.join(resolvedPath, 'CLAUDE.md');
       const globalPath = path.join(resolvedPath, 'CLAUDE-GLOBAL.md');
       const projectPath = path.join(resolvedPath, 'CLAUDE-PROJECT.md');
+      const globalTemplate = path.join(__dirname, '..', 'templates', 'CLAUDE-GLOBAL.template.md');
+      const projectTemplate = path.join(__dirname, '..', 'templates', 'CLAUDE-PROJECT.template.md');
 
       const spinner = ora('Adding workspace...').start();
 
@@ -53,45 +54,53 @@ program
 
       spinner.text = 'Setting up workspace files...';
 
+      const actions = [];
+
       // Check if GitHub has CLAUDE.md
       const repoPath = git.getRepoPath();
       const githubClaudeFile = path.join(repoPath, 'CLAUDE.md');
       const hasGithubClaude = fs.existsSync(githubClaudeFile);
 
-      // Download CLAUDE-GLOBAL.md from GitHub if available
-      if (hasGithubClaude && !fs.existsSync(globalPath)) {
-        fs.copyFileSync(githubClaudeFile, globalPath);
-        spinner.text = 'Downloaded CLAUDE-GLOBAL.md from GitHub';
+      // Handle CLAUDE-GLOBAL.md
+      if (!fs.existsSync(globalPath)) {
+        if (hasGithubClaude) {
+          // Download from GitHub
+          fs.copyFileSync(githubClaudeFile, globalPath);
+          actions.push('Downloaded CLAUDE-GLOBAL.md from GitHub');
+        } else {
+          // Create from template
+          fs.copyFileSync(globalTemplate, globalPath);
+          actions.push('Created CLAUDE-GLOBAL.md from template');
+        }
+      } else {
+        actions.push('CLAUDE-GLOBAL.md already exists');
       }
+
+      // Handle CLAUDE-PROJECT.md
+      if (!fs.existsSync(projectPath)) {
+        // Always create from template if doesn't exist
+        fs.copyFileSync(projectTemplate, projectPath);
+        actions.push('Created CLAUDE-PROJECT.md from template');
+      } else {
+        actions.push('CLAUDE-PROJECT.md already exists');
+      }
+
+      // Generate merged CLAUDE.md
+      spinner.text = 'Generating merged CLAUDE.md...';
+      await syncer.syncWorkspace(resolvedPath);
+      actions.push('Generated merged CLAUDE.md');
 
       spinner.succeed(`Workspace added: ${added}`);
 
-      if (fs.existsSync(claudeMdPath) && !fs.existsSync(projectPath)) {
-        console.log(boxen(
-          chalk.yellow.bold('⚠ Migration Recommended\n\n') +
-          chalk.gray('Detected existing CLAUDE.md file.\n') +
-          chalk.gray('You should split it into:\n\n') +
-          chalk.blue('  • CLAUDE-GLOBAL.md') + chalk.gray(' (shared - already downloaded from GitHub)\n') +
-          chalk.blue('  • CLAUDE-PROJECT.md') + chalk.gray(' (project-specific)\n\n') +
-          chalk.white('Run: ') + chalk.cyan('claude-sync migrate ' + path.basename(resolvedPath)),
-          {
-            padding: 1,
-            margin: 1,
-            borderStyle: 'round',
-            borderColor: 'yellow'
-          }
-        ));
-      } else if (!fs.existsSync(globalPath) && !fs.existsSync(projectPath)) {
-        console.log(chalk.gray('\nNext steps:'));
-        console.log(chalk.gray('  1. Create CLAUDE-GLOBAL.md (shared rules - will be synced to GitHub as CLAUDE.md)'));
-        console.log(chalk.gray('  2. Create CLAUDE-PROJECT.md (project-specific rules - stays local)'));
-        console.log(chalk.gray('  3. Run "claude-sync sync" to generate merged CLAUDE.md\n'));
-      } else {
-        console.log(chalk.blue('\n✓ Workspace ready'));
-        console.log(chalk.gray('  • CLAUDE-GLOBAL.md: Shared rules (syncs to GitHub)'));
-        console.log(chalk.gray('  • CLAUDE-PROJECT.md: Project-specific rules (local only)'));
-        console.log(chalk.gray('\nRun "claude-sync sync" to generate merged CLAUDE.md\n'));
-      }
+      console.log(chalk.blue('\n✓ Workspace ready\n'));
+      actions.forEach(action => {
+        console.log(chalk.gray(`  • ${action}`));
+      });
+
+      console.log(chalk.gray('\n💡 Tips:'));
+      console.log(chalk.gray('  • Edit CLAUDE-GLOBAL.md for rules shared across ALL projects'));
+      console.log(chalk.gray('  • Edit CLAUDE-PROJECT.md for project-specific rules'));
+      console.log(chalk.gray('  • Changes are auto-synced if daemon is running (claude-sync start)\n'));
     } catch (error) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
