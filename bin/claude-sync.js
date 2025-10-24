@@ -227,6 +227,50 @@ program
   });
 
 program
+  .command('sync-skills')
+  .description('Manually sync all global skills to GitHub')
+  .action(async () => {
+    try {
+      if (!config.exists()) {
+        console.error(chalk.red('\n✗ Configuration not found. Run "claude-sync init" first.\n'));
+        process.exit(1);
+      }
+
+      const spinner = ora('Syncing global skills...').start();
+
+      const result = await syncer.syncAllGlobalSkills();
+
+      spinner.stop();
+
+      console.log(
+        boxen(chalk.bold.blue('Skills Sync Results'), {
+          padding: 1,
+          margin: 1,
+          borderStyle: 'round',
+          borderColor: 'blue',
+        })
+      );
+
+      if (result.details && result.details.length > 0) {
+        result.details.forEach((detail) => {
+          const icon = detail.status === 'synced' ? '✓' : detail.status === 'failed' ? '✗' : '○';
+          const color = detail.status === 'synced' ? chalk.green : detail.status === 'failed' ? chalk.red : chalk.yellow;
+
+          console.log(color(`${icon} ${detail.skill}`));
+          console.log(chalk.gray(`  ${detail.message}`));
+        });
+      }
+
+      console.log();
+      console.log(chalk.bold(`Summary: ${chalk.green(result.synced)} synced, ${chalk.red(result.failed)} failed`));
+      console.log();
+    } catch (error) {
+      console.error(chalk.red(`\n✗ Skills sync failed: ${error.message}\n`));
+      process.exit(1);
+    }
+  });
+
+program
   .command('pull')
   .description('Pull CLAUDE-GLOBAL.md and skills from GitHub and update all workspaces')
   .action(async () => {
