@@ -22,6 +22,7 @@ async function checkAndNotifyUpdate() {
     const updateInfo = await updater.checkForUpdates(packageJson.version);
     if (updateInfo.updateAvailable) {
       updater.displayUpdateNotification(updateInfo);
+      updater.updateNotifiedVersion(updateInfo.latestVersion);
     }
   } catch (error) {
     // Silently ignore errors
