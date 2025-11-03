@@ -102,6 +102,20 @@ program
         actions.push('CLAUDE-PROJECT.md already exists');
       }
 
+      // Download skills from GitHub
+      spinner.text = 'Downloading global skills...';
+      const skillsResult = await syncer.propagateSkillsFromGitHub();
+      if (skillsResult.success) {
+        actions.push('Downloaded global skills from GitHub');
+      }
+
+      // Download agents from GitHub
+      spinner.text = 'Downloading global agents...';
+      const agentsResult = await syncer.propagateAgentsFromGitHub();
+      if (agentsResult.success) {
+        actions.push('Downloaded global agents from GitHub');
+      }
+
       // Generate merged CLAUDE.md
       spinner.text = 'Generating merged CLAUDE.md...';
       await syncer.syncWorkspace(resolvedPath);
@@ -273,7 +287,7 @@ program
 
 program
   .command('pull')
-  .description('Pull CLAUDE-GLOBAL.md and skills from GitHub and update all workspaces')
+  .description('Pull CLAUDE-GLOBAL.md, skills, and agents from GitHub and update all workspaces')
   .action(async () => {
     try {
       if (!config.exists()) {
@@ -285,6 +299,7 @@ program
 
       const results = await syncer.propagateFromGitHub();
       const skillsResult = await syncer.propagateSkillsFromGitHub();
+      const agentsResult = await syncer.propagateAgentsFromGitHub();
 
       spinner.stop();
 
@@ -312,6 +327,11 @@ program
       if (skillsResult.success) {
         console.log(chalk.green(`✓ Skills`));
         console.log(chalk.gray(`  ${skillsResult.message}`));
+      }
+
+      if (agentsResult.success) {
+        console.log(chalk.green(`✓ Agents`));
+        console.log(chalk.gray(`  ${agentsResult.message}`));
       }
 
       console.log();

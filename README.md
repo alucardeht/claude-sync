@@ -1,6 +1,6 @@
 # Claude Sync
 
-> Cross-platform CLI tool for automatic synchronization of CLAUDE.md files and Skills across multiple projects with GitHub backup
+> Cross-platform CLI tool for automatic synchronization of CLAUDE.md files, Skills, and Agents across multiple projects with GitHub backup
 
 [![npm version](https://img.shields.io/npm/v/@alucardeht/claude-sync.svg)](https://www.npmjs.com/package/@alucardeht/claude-sync)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -12,9 +12,9 @@
 
 ### What It Does
 
-- **Automatic sync** of global rules and skills across all your projects
+- **Automatic sync** of global rules, skills, and agents across all your projects
 - **Separates** shared rules (GLOBAL) from project-specific rules (PROJECT)
-- **GitHub backup** of global rules and skills
+- **GitHub backup** of global rules, skills, and agents
 - **Real-time watching** for automatic updates
 - **Smart merging** generates final CLAUDE.md from GLOBAL + PROJECT
 - **Cross-platform** support (macOS, Linux, Windows)
@@ -67,11 +67,15 @@ project/
 ```
 your-repo/
 ├── CLAUDE.md           ← Contains global rules
-└── skills/             ← Contains global skills
-    ├── agent-orchestration/
-    │   └── SKILL.md
-    └── ux-feedback-patterns/
-        └── SKILL.md
+├── skills/             ← Contains global skills
+│   ├── agent-orchestration/
+│   │   └── SKILL.md
+│   └── ux-feedback-patterns/
+│       └── SKILL.md
+└── agents/             ← Contains global agents
+    ├── ux-guardian.md
+    ├── security-guardian.md
+    └── workflow-guardian.md
 ```
 
 ## Usage
@@ -114,10 +118,7 @@ claude-sync logs -f
 # Sync all workspaces and push to GitHub
 claude-sync sync
 
-# Force sync all global skills to GitHub
-claude-sync sync-skills
-
-# Pull latest rules and skills from GitHub
+# Pull latest rules, skills, and agents from GitHub
 claude-sync pull
 
 # Watch for changes (foreground mode)
@@ -235,20 +236,52 @@ Claude Sync automatically synchronizes **Claude Code Skills** across all your ma
    - Daemon detects change but doesn't sync to GitHub
    - Skill stays local to that project
 
-### Manual Skills Sync
+## Agents Synchronization
 
-```bash
-# Force sync all global skills to GitHub
-claude-sync sync-skills
+Claude Sync automatically synchronizes **Claude Code Agents** across all your machines.
 
-# Pull latest skills from GitHub
-claude-sync pull
+### Global Agents (Shared)
+
+**Location (auto-detected by platform):**
+- macOS: `~/.claude/agents/`
+- Linux: `~/.claude/agents/`
+- Windows: `C:\Users\username\.claude\agents\`
+
+**Behavior:**
+- Automatically synced to GitHub when modified or created
+- Pulled automatically when daemon starts
+- Available across all projects and machines
+- Backed up in `your-repo/agents/`
+
+**Example:**
+```
+~/.claude/agents/
+├── ux-guardian.md
+├── security-guardian.md
+├── tech-lead-enforcer.md
+├── workflow-guardian.md
+├── context-optimizer.md
+└── mobile-responsive-reviewer.md
 ```
 
-The `sync-skills` command is useful for:
-- Syncing skills that existed before the daemon started
-- Manually forcing a sync after troubleshooting
-- Verifying all skills are backed up to GitHub
+### Project-Specific Agents (Local Only)
+
+**Location:** `<workspace>/.claude/agents/`
+
+**Behavior:**
+- Detected by watcher
+- NOT synced to GitHub (stays local)
+- Useful for project-specific agent workflows
+
+### How It Works
+
+1. **On Daemon Start**: Automatically pulls latest agents from GitHub
+2. **When You Create/Edit a Global Agent**:
+   - Daemon detects new or modified file in `~/.claude/agents/*.md`
+   - Automatically pushes to GitHub
+3. **When You Edit a Project Agent**:
+   - Daemon detects change but doesn't sync to GitHub
+   - Agent stays local to that project
 
 ## Authentication
 
@@ -300,11 +333,13 @@ npm update -g @alucardeht/claude-sync
 2. Verify GitHub credentials
 3. Pull latest: `cd ~/.config/claude-sync/repo && git pull`
 
-### Skills not syncing
+### Skills or Agents not syncing
 1. Verify daemon is running: `claude-sync status`
-2. Check filename is `SKILL.md` or `skill.md` (case-insensitive)
-3. Force manual sync: `claude-sync sync-skills`
-4. Check logs: `claude-sync logs`
+2. For skills: Check filename is `SKILL.md` or `skill.md` (case-insensitive)
+3. For agents: Check filename ends with `.md`
+4. Verify files are in global directory (`~/.claude/skills/` or `~/.claude/agents/`)
+5. Check logs: `claude-sync logs`
+6. Try restarting daemon: `claude-sync restart`
 
 ## Contributing
 
