@@ -1,6 +1,6 @@
 {
   "name": "@alucardeht/claude-sync",
-  "version": "1.0.9",
+  "version": "1.0.10",
   "description": "Cross-platform CLI tool for automatic synchronization of CLAUDE.md files across projects with GitHub backup",
   "main": "bin/claude-sync.js",
   "bin": {
