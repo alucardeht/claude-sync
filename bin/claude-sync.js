@@ -528,7 +528,7 @@ program
 program
   .command('status')
   .description('Show configuration and sync status')
-  .action(() => {
+  .action(async () => {
     try {
       if (!config.exists()) {
         console.error(chalk.red('\n✗ Configuration not found. Run "claude-sync init" first.\n'));
@@ -536,7 +536,7 @@ program
       }
 
       const cfg = config.get();
-      const watcherStatus = watcher.getStatus();
+      const pm2 = require('pm2');
 
       console.log(
         boxen(chalk.bold.blue('Claude Sync Status'), {
@@ -555,9 +555,35 @@ program
       console.log(chalk.gray(`  Last Sync: ${cfg.lastSync ? new Date(cfg.lastSync).toLocaleString() : 'Never'}`));
 
       console.log(chalk.blue('\nWatcher:'));
-      console.log(chalk.gray(`  Status: ${watcherStatus.isWatching ? 'Running' : 'Stopped'}`));
 
-      console.log();
+      pm2.connect((err) => {
+        if (err) {
+          console.log(chalk.gray('  Status: Stopped'));
+          console.log();
+          process.exit(0);
+        }
+
+        pm2.describe('claude-sync', (err, processDescription) => {
+          pm2.disconnect();
+
+          if (err || !processDescription || processDescription.length === 0) {
+            console.log(chalk.gray('  Status: Stopped'));
+          } else {
+            const proc = processDescription[0];
+            const status = proc.pm2_env?.status;
+            if (status === 'online') {
+              console.log(chalk.green('  Status: Running'));
+              console.log(chalk.gray(`  PID: ${proc.pid}`));
+              console.log(chalk.gray(`  Uptime: ${Math.floor((Date.now() - proc.pm2_env.pm_uptime) / 1000)}s`));
+            } else {
+              console.log(chalk.yellow(`  Status: ${status || 'Stopped'}`));
+            }
+          }
+
+          console.log();
+          process.exit(0);
+        });
+      });
     } catch (error) {
       console.error(chalk.red(`\n✗ Error: ${error.message}\n`));
       process.exit(1);
